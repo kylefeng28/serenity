@@ -54,18 +54,32 @@ Update your `run_qemu.sh` with these disk parameters:
 -append "root=nvme0:1:0 serial_debug"
 ```
 
+**Important**: The user data disk will appear as `/dev/hda0` (for AHCI/IDE) in SerenityOS. The custom `fstab` is configured to automatically mount it at `/home` during boot.
+
+### Device Naming
+
+Depending on your QEMU configuration, the FAT drive may appear as:
+- `/dev/hda0` - AHCI/IDE (default in example)
+- `/dev/ata0:0:0` - Alternative AHCI naming
+- `/dev/nvme1:1:0` - If using second NVMe device
+
+If the mount fails, check `/dev/` for available devices and update `/etc/fstab` accordingly.
+
 ## Mounting User Data in SerenityOS
 
-After boot, mount the user data partition:
+The user data partition is **automatically mounted** at boot via `/etc/fstab`.
+
+If automatic mounting fails (e.g., wrong device path), you can mount manually:
 
 ```bash
 # Find the device (usually /dev/hda0 for AHCI/IDE)
-ls /dev/hd* /dev/block*
+ls /dev/hd* /dev/block* /dev/ata*
 
-# Mount it
-mkdir -p /home
+# Mount it manually
 mount -t fat /dev/hda0 /home
 ```
+
+To fix the device path permanently, edit `/etc/fstab` and change the device name for the `/home` mount point.
 
 Or use the helper script:
 ```bash

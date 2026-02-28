@@ -112,6 +112,10 @@ done
 chmod 700 mnt_system/boot 2>/dev/null || true
 chmod 1777 mnt_system/tmp
 
+# Create /init symlink to /bin/init
+echo "Creating /init symlink..."
+ln -sf bin/init mnt_system/init
+
 # Create mount point for user data
 mkdir -p mnt_system/home
 
@@ -155,6 +159,28 @@ chmod -f 0400 mnt_system/boot/Kernel 2>/dev/null || true
 chmod -f 0400 mnt_system/boot/Kernel.efi 2>/dev/null || true
 chmod 600 mnt_system/etc/shadow 2>/dev/null || true
 
+# Create custom fstab for dual-disk setup
+echo "Creating custom fstab for dual-disk setup..."
+cat > mnt_system/etc/fstab << 'EOF'
+# Root file system. This is a fake entry which gets ignored by `mount -a`;
+# the actual logic for mounting root is in the kernel.
+/dev/hda	/	ext2	immutable,nodev,nosuid,ro
+# Remount /bin, /root, and /var while adding the appropriate permissions.
+/bin	/bin	bind	immutable,bind,nodev,ro
+/etc	/etc	bind	immutable,bind,nodev,nosuid
+/root	/root	bind	immutable,bind,nodev,nosuid
+/var	/var	bind	immutable,bind,nodev,nosuid
+/usr/Tests	/usr/Tests	bind	immutable,bind,nodev,ro
+/usr/local	/usr/local	bind	immutable,bind,nodev,nosuid
+/usr/Ports	/usr/Ports	bind	immutable,bind,nodev,nosuid
+# User data partition (FAT filesystem on second disk)
+# Adjust device path based on your QEMU disk configuration:
+# - For AHCI/IDE: /dev/hda0 or /dev/ata0:0:0
+# - For second NVMe: /dev/nvme1:1:0
+/dev/hda0	/home	fat	defaults
+EOF
+chmod 644 mnt_system/etc/fstab
+
 echo "System disk created successfully!"
 
 # Create user data directory for FAT virtual drive
@@ -175,10 +201,17 @@ echo "=== Build Complete ==="
 echo "System disk: _system_disk_image (ext2)"
 echo "User data:   userdata/ (directory for QEMU FAT virtual drive)"
 echo ""
+echo "IMPORTANT: The system disk includes a custom /etc/fstab that will"
+echo "automatically mount /dev/hda0 at /home during boot."
+echo ""
+echo "If /home doesn't mount, run inside SerenityOS:"
+echo "  /usr/local/bin/check-userdata.sh"
+echo ""
 echo "To use with QEMU, add these arguments:"
 echo "  -drive file=_system_disk_image,format=raw,id=system,if=none"
 echo "  -device nvme,serial=system,drive=system"
 echo "  -drive file=fat:rw:userdata,id=userdata,format=raw,if=none"
-echo "  -device nvme,serial=userdata,drive=userdata"
+echo "  -device ahci,id=ahci"
+echo "  -device ide-hd,drive=userdata,bus=ahci.0"
 echo ""
 echo "Kernel cmdline should include: root=nvme0:1:0"

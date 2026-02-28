@@ -50,9 +50,14 @@ done
 
 echo ""
 echo "Checking essential files:"
-for file in bin/init boot/Kernel etc/passwd etc/shadow var/run/utmp; do
+for file in init bin/init boot/Kernel etc/passwd etc/shadow var/run/utmp etc/fstab; do
     if [ -e "mnt_verify/$file" ]; then
-        echo "  ✓ /$file"
+        if [ -L "mnt_verify/$file" ]; then
+            target=$(readlink "mnt_verify/$file")
+            echo "  ✓ /$file -> $target"
+        else
+            echo "  ✓ /$file"
+        fi
     else
         echo "  ✗ /$file (MISSING)"
     fi
