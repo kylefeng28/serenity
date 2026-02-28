@@ -173,11 +173,14 @@ cat > mnt_system/etc/fstab << 'EOF'
 /usr/Tests	/usr/Tests	bind	immutable,bind,nodev,ro
 /usr/local	/usr/local	bind	immutable,bind,nodev,nosuid
 /usr/Ports	/usr/Ports	bind	immutable,bind,nodev,nosuid
-# User data partition (FAT filesystem on second disk)
+# User data partition (ext2 filesystem on second disk)
 # Adjust device path based on your QEMU disk configuration:
 # - For AHCI/IDE: /dev/hda0 or /dev/ata0:0:0
 # - For second NVMe: /dev/nvme1:1:0
-/dev/hda0	/home	fat	defaults
+# Use ext2 for proper Unix permissions (recommended)
+/dev/hda0	/home	ext2	defaults
+# Or use FAT if you prefer (but has permission issues):
+# /dev/hda0	/home	fat	defaults
 EOF
 chmod 644 mnt_system/etc/fstab
 
@@ -185,29 +188,59 @@ echo "System disk created successfully!"
 
 # Create user data directory for FAT virtual drive
 echo "Creating user data directory (userdata/)..."
-mkdir -p userdata/anon
+mkdir -p userdata/anon/.config
+mkdir -p userdata/anon/Desktop
 mkdir -p userdata/anon/Documents
 mkdir -p userdata/anon/Downloads
+mkdir -p userdata/anon/Music
+mkdir -p userdata/anon/Pictures
+mkdir -p userdata/anon/Source
+mkdir -p userdata/anon/Tests
+mkdir -p userdata/anon/Videos
+mkdir -p userdata/nona
 
-# Copy any existing home directory content
+# Copy home directory content from Base
+if [ -d "$SERENITY_SOURCE_DIR/Base/home/anon" ]; then
+    echo "Copying home directory structure from Base..."
+    rsync -aH --update "$SERENITY_SOURCE_DIR"/Base/home/anon/ userdata/anon/
+fi
+
+# Copy any additional content from Root/home if it exists
 if [ -d Root/home/anon ]; then
     rsync -aH --update Root/home/anon/ userdata/anon/
 fi
 
+# Set proper ownership
 chown -R "$SUDO_UID":"$SUDO_GID" userdata/ || true
+chmod -R u+w userdata/anon/.config || true
 
 echo ""
 echo "=== Build Complete ==="
 echo "System disk: _system_disk_image (ext2)"
 echo "User data:   userdata/ (directory for QEMU FAT virtual drive)"
 echo ""
-echo "IMPORTANT: The system disk includes a custom /etc/fstab that will"
-echo "automatically mount /dev/hda0 at /home during boot."
+echo "⚠️  IMPORTANT: FAT filesystem limitation"
+echo "The FAT virtual drive reports all files as owned by root (uid=0)."
+echo "This may cause permission issues for user applications."
+echo ""
+echo "For production use, consider creating a real ext2 userdata disk:"
+echo "  dd if=/dev/zero of=_userdata_disk_image bs=1M count=512"
+echo "  mkfs.ext2 _userdata_disk_image"
+echo "  mount _userdata_disk_image mnt_userdata"
+echo "  cp -r userdata/* mnt_userdata/"
+echo "  chown -R 100:100 mnt_userdata/anon"
+echo "  umount mnt_userdata"
+echo ""
+echo "Then use in QEMU:"
+echo "  -drive file=_userdata_disk_image,format=raw,id=userdata,if=none"
+echo ""
+echo "For now (development with FAT), the system disk includes a custom"
+echo "/etc/fstab that will mount /dev/hda0 at /home during boot."
 echo ""
 echo "If /home doesn't mount, run inside SerenityOS:"
 echo "  /usr/local/bin/check-userdata.sh"
 echo ""
-echo "To use with QEMU, add these arguments:"
+echo "To use with QEMU (FAT virtual drive):"
 echo "  -drive file=_system_disk_image,format=raw,id=system,if=none"
 echo "  -device nvme,serial=system,drive=system"
 echo "  -drive file=fat:rw:userdata,id=userdata,format=raw,if=none"

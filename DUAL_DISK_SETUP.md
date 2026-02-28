@@ -19,7 +19,12 @@ This setup separates system files from user data for easier development and bare
 
 ```bash
 cd Build/x86_64
+
+# Build system disk and userdata directory
 ../../Meta/build-dual-disk.sh
+
+# Build ext2 userdata disk (recommended for proper permissions)
+../../Meta/build-userdata-ext2.sh
 ```
 
 This creates:
@@ -28,23 +33,58 @@ This creates:
   - `/proc`, `/sys`, `/dev`, `/tmp` - Empty mount points
   - `/home` - Empty directory for user data mount
   - `/var/run/utmp` - Runtime state
-- `userdata/` - User data directory (presented as FAT to QEMU)
+  - `/init` -> `/bin/init` symlink
+- `userdata/` - User data directory (for development)
+- `_userdata_disk_image` - User data disk (ext2, recommended)
 
 To verify the system disk was built correctly:
 ```bash
 ../../Meta/verify-system-disk.sh
 ```
 
+### FAT vs ext2 for User Data
+
+**ext2 (recommended)**:
+- ✅ Proper Unix permissions (files owned by anon user)
+- ✅ No permission errors
+- ✅ Ready for bare metal
+- ❌ Requires separate disk image file
+
+**FAT virtual drive (development only)**:
+- ✅ Easy to edit from host (just edit `userdata/` directory)
+- ✅ No mounting needed on host
+- ❌ All files owned by root (permission issues)
+- ❌ Services may fail to write config files
+
 ## Running
 
 Update your `run_qemu.sh` with these disk parameters:
+
+### Option 1: ext2 userdata (recommended)
 
 ```bash
 # System disk (ext2)
 -drive file=_system_disk_image,format=raw,id=system,if=none \
 -device nvme,serial=system,drive=system \
 
-# User data (FAT virtual drive)
+# User data (ext2 disk image)
+-drive file=_userdata_disk_image,format=raw,id=userdata,if=none \
+-device ahci,id=ahci \
+-device ide-hd,drive=userdata,bus=ahci.0 \
+
+# Boot from system disk
+-kernel Kernel/Kernel \
+-append "root=nvme0:1:0 serial_debug"
+```
+
+### Option 2: FAT virtual drive (development, has permission issues)
+
+```bash
+# System disk (ext2)
+-drive file=_system_disk_image,format=raw,id=system,if=none \
+-device nvme,serial=system,drive=system \
+
+# User data (FAT virtual drive from directory)
 -drive file=fat:rw:userdata,id=userdata,format=raw,if=none \
 -device ahci,id=ahci \
 -device ide-hd,drive=userdata,bus=ahci.0 \
@@ -53,6 +93,8 @@ Update your `run_qemu.sh` with these disk parameters:
 -kernel Kernel/Kernel \
 -append "root=nvme0:1:0 serial_debug"
 ```
+
+**Note**: With FAT, you'll need to edit `/etc/fstab` to change `ext2` to `fat` for the `/home` mount.
 
 **Important**: The user data disk will appear as `/dev/hda0` (for AHCI/IDE) in SerenityOS. The custom `fstab` is configured to automatically mount it at `/home` during boot.
 
