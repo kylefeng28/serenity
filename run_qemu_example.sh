@@ -32,7 +32,8 @@ qemu-system-x86_64 \
     -device nvme,serial=system,drive=system \
     \
     `# User data (FAT virtual drive from directory)` \
-    -drive file=fat:rw:userdata,id=userdata,format=raw,if=none \
+    -drive file=fat:rw:userdata,id=userdata-fat,format=raw,if=none \
+    -drive file=_userdata_disk_image,format=raw,id=userdata,if=none \
     -device ahci,id=ahci \
     -device ide-hd,drive=userdata,bus=ahci.0 \
     \

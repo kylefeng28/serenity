@@ -173,14 +173,20 @@ cat > mnt_system/etc/fstab << 'EOF'
 /usr/Tests	/usr/Tests	bind	immutable,bind,nodev,ro
 /usr/local	/usr/local	bind	immutable,bind,nodev,nosuid
 /usr/Ports	/usr/Ports	bind	immutable,bind,nodev,nosuid
-# User data partition (ext2 filesystem on second disk)
-# Adjust device path based on your QEMU disk configuration:
-# - For AHCI/IDE: /dev/hda0 or /dev/ata0:0:0
-# - For second NVMe: /dev/nvme1:1:0
-# Use ext2 for proper Unix permissions (recommended)
-/dev/hda0	/home	ext2	defaults
-# Or use FAT if you prefer (but has permission issues):
-# /dev/hda0	/home	fat	defaults
+# User data partition
+# IMPORTANT: Check /dev/ for the actual device name!
+# Common device names:
+# - AHCI/IDE: /dev/ata0:0:0, /dev/ata1:0:0, /dev/hda, /dev/hdb
+# - NVMe: /dev/nvme1:1:0
+# - USB: /dev/block3:0
+# Run: ls /dev/ata* /dev/hd* /dev/block* /dev/nvme* 2>/dev/null
+# Then uncomment and adjust one of the lines below:
+#
+# For ext2 userdata disk (recommended):
+#/dev/ata1:0:0	/home	ext2	defaults
+#
+# For FAT virtual drive (development only, has permission issues):
+#/dev/ata1:0:0	/home	fat	defaults
 EOF
 chmod 644 mnt_system/etc/fstab
 

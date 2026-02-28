@@ -18,6 +18,7 @@ echo "Updating system disk..."
 # "$SCRIPT_DIR/build-dual-disk.sh"
 set -x
 /usr/bin/cmake -E env SERENITY_SOURCE_DIR=/home/kylef/git/serenity SERENITY_ARCH=x86_64 SERENITY_TOOLCHAIN=GNU $SCRIPT_DIR/build-dual-disk.sh
+/usr/bin/cmake -E env SERENITY_SOURCE_DIR=/home/kylef/git/serenity SERENITY_ARCH=x86_64 SERENITY_TOOLCHAIN=GNU $SCRIPT_DIR/build-userdata-ext2.sh
 
 echo ""
 echo "=== Rebuild Complete ==="

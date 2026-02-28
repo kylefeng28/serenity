@@ -1,5 +1,6 @@
-_kernel=./Build/x86_64/Kernel/Kernel
-_disk_image=./Build/x86_64/_disk_image
+PREFIX=$(realpath $(dirname $0))
+_kernel=$PREFIX/./Build/x86_64/Kernel/Kernel
+_disk_image=$PREFIX/./Build/x86_64/_disk_image
 
 qemu-system-x86_64 \
   -device i82801b11-bridge,id=bridge4 \
@@ -33,5 +34,7 @@ qemu-system-x86_64 \
   -netdev user,id=breh,hostfwd=tcp:127.0.0.1:8888-10.0.2.15:8888,hostfwd=tcp:127.0.0.1:8823-10.0.2.15:23,hostfwd=tcp:127.0.0.1:8000-10.0.2.15:8000,hostfwd=tcp:127.0.0.1:2222-10.0.2.15:22 \
   -device e1000,netdev=breh,bus=bridge1 \
   -drive file=$_disk_image,if=none,format=raw,id=boot-drive \
+  -drive file=fat:rw:userdata,id=userdata-fat,format=raw,if=none \
+  -drive file=_userdata_disk_image,format=raw,id=userdata,if=none \
   -chardev stdio,id=stdout,mux=on
 
